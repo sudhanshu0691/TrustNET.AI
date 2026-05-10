@@ -23,28 +23,32 @@ export default function Popup(){
     loadProtectionStatus()
     
     ;(async ()=>{
-      console.log('🚀 [Popup] Initializing popup...')
-      const u = await getCurrentTabUrl()
-      console.log('📍 [Popup] Current tab URL fetched:', u)
-      
-      if(u) {
-        setUrl(u)
-        setInputUrl(u)
+      try {
+        console.log('🚀 [Popup] Initializing popup...')
+        const u = await getCurrentTabUrl()
+        console.log('📍 [Popup] Current tab URL fetched:', u)
         
-        // Check protection status and run check if enabled
-        chrome.storage.local.get(['trustnet_ai_protection'], (res) => {
-          const isEnabled = res.trustnet_ai_protection ?? true
-          console.log('🔒 [Popup] Protection status:', isEnabled)
+        if(u) {
+          setUrl(u)
+          setInputUrl(u)
           
-          if(isEnabled) {
-            console.log('🔍 [Popup] Auto-checking current tab URL...')
-            doCheck(u)
-          } else {
-            console.log('⚠️ [Popup] Protection is disabled, skipping auto-check')
-          }
-        })
-      } else {
-        console.warn('⚠️ [Popup] No URL found for current tab')
+          // Check protection status and run check if enabled
+          chrome.storage.local.get(['trustnet_ai_protection'], (res) => {
+            const isEnabled = res.trustnet_ai_protection ?? true
+            console.log('🔒 [Popup] Protection status:', isEnabled)
+            
+            if(isEnabled) {
+              console.log('🔍 [Popup] Auto-checking current tab URL...')
+              doCheck(u)
+            } else {
+              console.log('⚠️ [Popup] Protection is disabled, skipping auto-check')
+            }
+          })
+        } else {
+          console.warn('⚠️ [Popup] No URL found for current tab')
+        }
+      } catch (error) {
+        console.error('❌ [Popup] Error initializing popup:', error)
       }
     })()
   },[])
@@ -52,22 +56,35 @@ export default function Popup(){
 
   function loadStats(){
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ [Popup] chrome.storage not available')
+        return
+      }
       chrome.storage.local.get([STATS_KEY], res=>{
         setStats(res[STATS_KEY] || {total: 0, safe: 0, unsafe: 0, blocked: 0})
       })
-    }catch(e){console.warn('loadStats', e)}
+    }catch(e){console.error('❌ [Popup] loadStats error:', e)}
   }
 
   function loadProtectionStatus(){
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ [Popup] chrome.storage not available')
+        setIsProtected(true) // Default to enabled
+        return
+      }
       chrome.storage.local.get(['trustnet_ai_protection'], res=>{
         setIsProtected(res.trustnet_ai_protection ?? true)
       })
-    }catch(e){console.warn('loadProtectionStatus', e)}
+    }catch(e){console.error('❌ [Popup] loadProtectionStatus error:', e)}
   }
 
   function updateStats(isSafe, wasBlocked = false){
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ [Popup] chrome.storage not available for updateStats')
+        return
+      }
       chrome.storage.local.get([STATS_KEY], res=>{
         const s = res[STATS_KEY] || {total: 0, safe: 0, unsafe: 0, blocked: 0}
         s.total++
@@ -77,7 +94,7 @@ export default function Popup(){
         chrome.storage.local.set({[STATS_KEY]: s})
         setStats(s)
       })
-    }catch(e){console.warn('updateStats', e)}
+    }catch(e){console.error('❌ [Popup] updateStats error:', e)}
   }
 
   async function doCheck(targetUrl){
@@ -111,6 +128,11 @@ export default function Popup(){
   function pushHistory(item){
     return new Promise((resolve) => {
       try{
+        if (!chrome || !chrome.storage || !chrome.storage.local) {
+          console.warn('⚠️ [Popup] chrome.storage not available for pushHistory')
+          resolve()
+          return
+        }
         chrome.storage.local.get([HISTORY_KEY], res=>{
           const list = res[HISTORY_KEY] || []
           list.unshift(item)
@@ -120,7 +142,7 @@ export default function Popup(){
           })
         })
       }catch(e){
-        console.warn('pushHistory', e)
+        console.error('❌ [Popup] pushHistory error:', e)
         resolve()
       }
     })
@@ -136,8 +158,12 @@ export default function Popup(){
     const next = !isProtected
     setIsProtected(next)
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ [Popup] chrome.storage not available for toggleProtection')
+        return
+      }
       chrome.storage.local.set({trustnet_ai_protection: next})
-    }catch(e){console.warn('toggleProtection', e)}
+    }catch(e){console.error('❌ [Popup] toggleProtection error:', e)}
   }
 
   return (

@@ -660,7 +660,7 @@ def check():
                 'reason': 'local_dataset_phishing',
                 'source': 'local_dataset',
                 'match_type': local_check['match_type'],
-                'message': f'URL found in local phishing database - Unsafe',
+                'message': f'URL is CRITICAL Block this Site',
                 'analysis': analysis
             })
     

@@ -52,19 +52,29 @@ export default function Alert({url, reason, onWhitelist, details}){
   }, [reason, details])
 
   const leaveSite = ()=>{
-    chrome.tabs.query({active:true,currentWindow:true},tabs=>{
-      if(tabs[0]) {
-        // Close the tab
-        chrome.tabs.remove(tabs[0].id)
-        // Update blocked count
-        chrome.storage.local.get(['trustnet_ai_stats'], res=>{
-          const s = res.trustnet_ai_stats || {total: 0, safe: 0, unsafe: 0, blocked: 0}
-          s.blocked++
-          chrome.storage.local.set({trustnet_ai_stats: s})
-        })
+    try {
+      if (!chrome || !chrome.tabs || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome APIs not available')
         window.close()
+        return
       }
-    })
+      chrome.tabs.query({active:true,currentWindow:true},tabs=>{
+        if(tabs[0]) {
+          // Close the tab
+          chrome.tabs.remove(tabs[0].id)
+          // Update blocked count
+          chrome.storage.local.get(['trustnet_ai_stats'], res=>{
+            const s = res.trustnet_ai_stats || {total: 0, safe: 0, unsafe: 0, blocked: 0}
+            s.blocked++
+            chrome.storage.local.set({trustnet_ai_stats: s})
+          })
+          window.close()
+        }
+      })
+    } catch(e) {
+      console.error('❌ Error in leaveSite:', e)
+      window.close()
+    }
   }
 
   const ignoreOnce = ()=>{

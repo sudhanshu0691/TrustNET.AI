@@ -23,8 +23,9 @@ export default defineConfig({
           
           // Copy content scripts
           mkdirSync('dist/src/content', { recursive: true })
+          copyFileSync('src/content/warning-banner.js', 'dist/src/content/warning-banner.js')
           copyFileSync('src/content/detector.js', 'dist/src/content/detector.js')
-          console.log('✅ Content script (detector.js) copied')
+          console.log('✅ Content scripts (warning-banner.js, detector.js) copied')
           
           // Copy icons to dist root (not public subfolder)
           try {

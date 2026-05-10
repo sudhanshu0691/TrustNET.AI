@@ -35,8 +35,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["src/content/detector.js"],
-      "run_at": "document_idle"
+      "js": ["src/content/warning-banner.js", "src/content/detector.js"],
+      "run_at": "document_start"
     }
   ],
   "options_page": "index.html"

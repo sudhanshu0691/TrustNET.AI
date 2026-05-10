@@ -13,6 +13,10 @@ export default function Settings(){
 
   useEffect(()=>{
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
       chrome.storage.local.get([
         AUTO_KEY, WHITELIST_KEY, NOTIFY_KEY, SCHEDULE_KEY
       ], res=>{
@@ -22,26 +26,35 @@ export default function Settings(){
         setSchedule(res[SCHEDULE_KEY] ?? false)
       })
     }catch(e){
-      console.warn('settings load', e)
+      console.error('❌ Settings load error:', e)
     }
   },[])
 
   function toggleAuto(){
     const next = !auto
     setAuto(next)
-    try{ chrome.storage.local.set({[AUTO_KEY]: next}) }catch(e){}
+    try{ 
+      if (!chrome || !chrome.storage || !chrome.storage.local) return
+      chrome.storage.local.set({[AUTO_KEY]: next}) 
+    }catch(e){console.error('❌ toggleAuto error:', e)}
   }
 
   function toggleNotifications(){
     const next = !notifications
     setNotifications(next)
-    try{ chrome.storage.local.set({[NOTIFY_KEY]: next}) }catch(e){}
+    try{ 
+      if (!chrome || !chrome.storage || !chrome.storage.local) return
+      chrome.storage.local.set({[NOTIFY_KEY]: next}) 
+    }catch(e){console.error('❌ toggleNotifications error:', e)}
   }
 
   function toggleSchedule(){
     const next = !schedule
     setSchedule(next)
-    try{ chrome.storage.local.set({[SCHEDULE_KEY]: next}) }catch(e){}
+    try{ 
+      if (!chrome || !chrome.storage || !chrome.storage.local) return
+      chrome.storage.local.set({[SCHEDULE_KEY]: next}) 
+    }catch(e){console.error('❌ toggleSchedule error:', e)}
   }
 
   function exportWhitelist(){

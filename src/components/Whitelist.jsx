@@ -7,14 +7,30 @@ export default function Whitelist({url, onClose}){
   const [newDomain, setNewDomain] = useState('')
 
   useEffect(()=>{
-    chrome.storage.local.get([key], res=>{
-      setList(res[key] || [])
-    })
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
+      chrome.storage.local.get([key], res=>{
+        setList(res[key] || [])
+      })
+    } catch(e) {
+      console.error('❌ Error loading whitelist:', e)
+    }
   },[])
 
   const remove = (host)=>{
     const next = list.filter(x=>x!==host)
-    chrome.storage.local.set({[key]: next}, ()=>setList(next))
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
+      chrome.storage.local.set({[key]: next}, ()=>setList(next))
+    } catch(e) {
+      console.error('❌ Error removing from whitelist:', e)
+    }
   }
 
   const addDomain = ()=>{
@@ -32,10 +48,18 @@ export default function Whitelist({url, onClose}){
       return
     }
     const next = [...list, domain]
-    chrome.storage.local.set({[key]: next}, ()=>{
-      setList(next)
-      setNewDomain('')
-    })
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
+      chrome.storage.local.set({[key]: next}, ()=>{
+        setList(next)
+        setNewDomain('')
+      })
+    } catch(e) {
+      console.error('❌ Error adding to whitelist:', e)
+    }
   }
 
   const addCurrentSite = ()=>{
@@ -47,6 +71,10 @@ export default function Whitelist({url, onClose}){
         return
       }
       const next = [...list, domain]
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
       chrome.storage.local.set({[key]: next}, ()=>setList(next))
     }catch(e){
       alert('Invalid URL')
@@ -55,7 +83,15 @@ export default function Whitelist({url, onClose}){
 
   const clearAll = ()=>{
     if(!confirm(`Remove all ${list.length} whitelisted domains?`)) return
-    chrome.storage.local.set({[key]: []}, ()=>setList([]))
+    try {
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
+      chrome.storage.local.set({[key]: []}, ()=>setList([]))
+    } catch(e) {
+      console.error('❌ Error clearing whitelist:', e)
+    }
   }
 
   const filteredList = list.filter(host => 

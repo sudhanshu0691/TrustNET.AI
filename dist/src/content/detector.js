@@ -1,41 +1,53 @@
 // Content script - detects unsafe sites and shows in-page warnings
 (async function() {
   try {
+    console.log('🔍 TrustNET AI detector.js loaded and running');
     const url = window.location.href;
     
     // Skip internal pages
     if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('about:')) {
+      console.log('⏭️ Skipping internal page:', url);
       return;
     }
 
     const domain = window.location.hostname;
+    console.log('🌐 Analyzing URL:', domain);
 
     // Check if already whitelisted
     const isWhitelisted = await checkWhitelist(domain);
     if (isWhitelisted) {
+      console.log('✅ Domain is whitelisted:', domain);
       return;
     }
 
     // Check if protection is enabled
     const protectionEnabled = await checkProtectionStatus();
     if (!protectionEnabled) {
+      console.log('🔴 Protection is disabled - Enable it in extension popup!');
       return;
     }
+
+    console.log('🛡️ Protection enabled, analyzing page content...');
 
     // Perform local content analysis
     const contentThreats = analyzePageContent();
     const jsThreats = analyzeJavaScriptBehavior();
     
+    console.log('📊 Content Threats:', contentThreats.risk_score, '| JS Threats:', jsThreats.risk_score);
+    
     // If critical local threats detected, show warning immediately
     if (contentThreats.risk_score > 50 || jsThreats.risk_score > 50) {
+      console.log('⚠️ CRITICAL LOCAL THREATS DETECTED! Showing banner immediately');
       const localThreatData = {
         safe: false,
         reason: 'local_content_analysis',
         message: 'Suspicious content detected on this page',
+        threat_level: 'high',
         content_threats: contentThreats,
         js_threats: jsThreats
       };
-      showWarningBanner(localThreatData);
+      trustnetBanner.show(localThreatData);
+      return;
     }
 
     // Hash URL for privacy
@@ -73,7 +85,7 @@
       // If site is unsafe, show warning banner
       if (data.safe === false) {
         console.log('🚨 Showing warning banner for unsafe URL:', domain);
-        showWarningBanner(data);
+        trustnetBanner.show(data);
       } else if (data.safe === true) {
         console.log('✅ URL is safe:', domain);
       } else {
@@ -352,156 +364,6 @@ async function checkProtectionStatus() {
   });
 }
 
-function showWarningBanner(data) {
-  // Check if banner already exists
-  if (document.getElementById('trustnet-ai-warning-banner')) {
-    console.log('⚠️ Warning banner already exists');
-    return;
-  }
-
-  console.log('🚨 Creating warning banner for threat:', data.reason);
-
-  // Create warning banner
-  const banner = document.createElement('div');
-  banner.id = 'trustnet-ai-warning-banner';
-  banner.style.cssText = `
-    position: fixed !important;
-    left: 0 !important;
-    right: 0 !important;
-    top: 0 !important;
-    z-index: 2147483647 !important;
-    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%) !important;
-    border-bottom: 4px solid #7f1d1d !important;
-    color: white !important;
-    padding: 16px 20px !important;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-    animation: slideDown 0.3s ease-out !important;
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 100% !important;
-    height: auto !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-  `;
-
-  const threatLevel = getThreatLevel(data);
-  const icon = getThreatIcon(threatLevel);
-  const isPhishing = (data.reason || '').toLowerCase().includes('phishing');
-  const detectionSource = getDetectionSource(data);
-
-  banner.innerHTML = `
-    <style>
-      @keyframes slideDown {
-        from { transform: translateY(-100%); opacity: 0; }
-        to { transform: translateY(0); opacity: 1; }
-      }
-      @keyframes pulse {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-      }
-      #trustnet-ai-warning-banner button {
-        cursor: pointer !important;
-        transition: all 0.2s !important;
-      }
-      #trustnet-ai-warning-banner button:hover {
-        transform: scale(1.05) !important;
-      }
-    </style>
-    <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 16px;">
-      <div style="font-size: 32px; animation: pulse 2s infinite;">${icon}</div>
-      <div style="flex: 1; min-width: 0;">
-        <div style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">
-          ${isPhishing ? '🚨 PHISHING ALERT: Known Malicious Website' : '⚠️ WARNING: Potentially Dangerous Website Detected'}
-        </div>
-        <div style="font-size: 14px; opacity: 0.95;">
-          ${data.message || 'This website may be unsafe. Proceed with caution.'}
-        </div>
-        <div style="font-size: 12px; margin-top: 4px; opacity: 0.85;">
-          Threat Level: <strong>${threatLevel.toUpperCase()}</strong> | 
-          Detection: ${detectionSource}
-        </div>
-      </div>
-      <div style="display: flex; gap: 8px; flex-shrink: 0; margin-left: auto;">
-        <button id="trustnet-ai-leave" style="
-          background: white !important;
-          color: #dc2626 !important;
-          border: none !important;
-          padding: 10px 20px !important;
-          border-radius: 6px !important;
-          font-weight: bold !important;
-          font-size: 14px !important;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
-          cursor: pointer !important;
-        ">
-          🚫 Leave Site
-        </button>
-        <button id="trustnet-ai-proceed" style="
-          background: rgba(255,255,255,0.2) !important;
-          color: white !important;
-          border: 2px solid white !important;
-          padding: 10px 20px !important;
-          border-radius: 6px !important;
-          font-weight: bold !important;
-          font-size: 14px !important;
-          cursor: pointer !important;
-        ">
-          Continue Anyway
-        </button>
-        <button id="trustnet-ai-close" style="
-          background: transparent !important;
-          color: white !important;
-          border: none !important;
-          font-size: 24px !important;
-          padding: 0 10px !important;
-          cursor: pointer !important;
-        ">
-          ×
-        </button>
-      </div>
-    </div>
-  `;
-
-  // Add to page - use documentElement to ensure it's at the very top
-  try {
-    document.documentElement.insertBefore(banner, document.documentElement.firstChild);
-    console.log('✅ Warning banner added to page');
-  } catch (e) {
-    console.error('Failed to add banner:', e);
-    // Fallback: append to body
-    document.body.insertBefore(banner, document.body.firstChild);
-  }
-
-  // Add button event listeners with error handling
-  setTimeout(() => {
-    const leaveBtn = document.getElementById('trustnet-ai-leave');
-    const proceedBtn = document.getElementById('trustnet-ai-proceed');
-    const closeBtn = document.getElementById('trustnet-ai-close');
-
-    if (leaveBtn) {
-      leaveBtn.addEventListener('click', () => {
-        console.log('🚫 User clicked Leave Site');
-        window.location.href = 'about:blank';
-      });
-    }
-
-    if (proceedBtn) {
-      proceedBtn.addEventListener('click', () => {
-        console.log('✓ User clicked Continue Anyway');
-        banner.remove();
-      });
-    }
-
-    if (closeBtn) {
-      closeBtn.addEventListener('click', () => {
-        console.log('× User closed warning');
-        banner.remove();
-      });
-    }
-  }, 0);
-}
-
 function getThreatLevel(data) {
   const reason = (data.reason || '').toLowerCase();
   if (reason.includes('google_safebrowsing') || reason.includes('malware') || reason.includes('phishing')) {
@@ -550,6 +412,90 @@ function getThreatIcon(level) {
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'UNSAFE_SITE_DETECTED') {
-    showWarningBanner(message.data);
+    console.log('📨 Message from background script:', message.data);
+    trustnetBanner.show(message.data);
   }
 });
+
+// ==========================================
+// DEBUG & TEST FUNCTIONS - Run from console
+// ==========================================
+
+/**
+ * Test the banner display
+ * Usage in console: window.testBannerPhishing()
+ */
+window.testBannerPhishing = function() {
+  console.log('🧪 Testing PHISHING alert banner...');
+  const testData = {
+    safe: false,
+    reason: 'phishing_detected',
+    message: 'This website is flagged as a phishing site attempting to steal your credentials and personal information.',
+    threat_level: 'critical'
+  };
+  trustnetBanner.show(testData);
+};
+
+/**
+ * Test the banner with high threat
+ * Usage in console: window.testBannerMalware()
+ */
+window.testBannerMalware = function() {
+  console.log('🧪 Testing MALWARE alert banner...');
+  const testData = {
+    safe: false,
+    reason: 'malware_detected',
+    message: 'This website contains malicious software that could harm your computer.',
+    threat_level: 'critical'
+  };
+  trustnetBanner.show(testData);
+};
+
+/**
+ * Test the banner with medium threat
+ * Usage in console: window.testBannerSuspicious()
+ */
+window.testBannerSuspicious = function() {
+  console.log('🧪 Testing SUSPICIOUS website alert banner...');
+  const testData = {
+    safe: false,
+    reason: 'suspicious_activity',
+    message: 'This website shows signs of suspicious activity and may not be safe.',
+    threat_level: 'high'
+  };
+  trustnetBanner.show(testData);
+};
+
+/**
+ * Check detector status
+ * Usage in console: window.checkTrustNETStatus()
+ */
+window.checkTrustNETStatus = function() {
+  console.log('=== TrustNET AI STATUS CHECK ===');
+  console.log('Page URL:', window.location.href);
+  console.log('Domain:', window.location.hostname);
+  console.log('Banner Module Available:', typeof trustnetBanner !== 'undefined');
+  
+  // Check chrome APIs
+  if (typeof chrome !== 'undefined' && typeof chrome.runtime !== 'undefined') {
+    console.log('✅ Chrome Extension APIs Available');
+  } else {
+    console.error('❌ Chrome Extension APIs NOT available');
+  }
+  
+  // Check storage
+  if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') {
+    console.log('✅ Chrome Storage API Available');
+  } else {
+    console.error('❌ Chrome Storage API NOT available');
+  }
+  
+  console.log('📋 Available Test Commands:');
+  console.log('  • window.testBannerPhishing() - Test phishing alert');
+  console.log('  • window.testBannerMalware() - Test malware alert');
+  console.log('  • window.testBannerSuspicious() - Test suspicious alert');
+  console.log('  • window.checkTrustNETStatus() - Check status');
+};
+
+console.log('✨ TrustNET AI Detector Initialized');
+console.log('💡 For debugging, use: window.checkTrustNETStatus() or window.testBannerPhishing()');

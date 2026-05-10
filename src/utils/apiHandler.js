@@ -7,13 +7,25 @@ const API_TIMEOUT_KEY = 'trustnet_ai_api_timeout'
 export async function getCurrentTabUrl(){
   return new Promise((resolve)=>{
     try{
-      chrome.tabs.query({active:true,currentWindow:true}, tabs=>{
-        if(tabs && tabs[0] && tabs[0].url) {
-          console.log('📍 [API] Current tab URL:', tabs[0].url)
-          resolve(tabs[0].url)
-        }
-        else {
-          console.warn('⚠️ [API] No active tab found')
+      // Check if chrome.tabs is available
+      if (!chrome || !chrome.tabs || !chrome.tabs.query) {
+        console.error('❌ [API] chrome.tabs API not available')
+        resolve(null)
+        return
+      }
+
+      chrome.tabs.query({active:true,currentWindow:true}, (tabs)=>{
+        if(!tabs || !chrome.runtime.lastError) {
+          if(tabs && tabs[0] && tabs[0].url) {
+            console.log('📍 [API] Current tab URL:', tabs[0].url)
+            resolve(tabs[0].url)
+          }
+          else {
+            console.warn('⚠️ [API] No active tab found')
+            resolve(null)
+          }
+        } else {
+          console.error('❌ [API] chrome.tabs.query error:', chrome.runtime.lastError)
           resolve(null)
         }
       })

@@ -10,40 +10,61 @@ export default function History({onStatsUpdate}){
   useEffect(()=>{
     load()
     // Listen for storage changes in other tabs/popups
-    const handleStorageChange = (changes, areaName) => {
-      if(areaName === 'local' && changes[HISTORY_KEY]) {
-        setList(changes[HISTORY_KEY].newValue || [])
+    try {
+      if (!chrome || !chrome.storage) {
+        console.warn('⚠️ Chrome storage not available')
+        return
       }
+      const handleStorageChange = (changes, areaName) => {
+        if(areaName === 'local' && changes[HISTORY_KEY]) {
+          setList(changes[HISTORY_KEY].newValue || [])
+        }
+      }
+      chrome.storage.onChanged.addListener(handleStorageChange)
+      return () => chrome.storage.onChanged.removeListener(handleStorageChange)
+    } catch(e) {
+      console.error('❌ Error setting up storage listener:', e)
     }
-    chrome.storage.onChanged.addListener(handleStorageChange)
-    return () => chrome.storage.onChanged.removeListener(handleStorageChange)
   },[])
 
   function load(){
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        setList([])
+        return
+      }
       chrome.storage.local.get([HISTORY_KEY], res=>{
         setList(res[HISTORY_KEY] || [])
       })
     }catch(e){
-      console.warn('History load', e)
+      console.error('❌ History load error:', e)
     }
   }
 
   function clearHistory(){
     if(!confirm('Are you sure you want to clear all history?')) return
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
       chrome.storage.local.set({[HISTORY_KEY]: []}, ()=>{
         setList([])
         if(onStatsUpdate) onStatsUpdate()
       })
     }catch(e){
-      console.warn('clearHistory', e)
+      console.error('❌ clearHistory error:', e)
     }
   }
 
   function deleteItem(item){
     const updated = list.filter(it => it.ts !== item.ts)
     try{
+      if (!chrome || !chrome.storage || !chrome.storage.local) {
+        console.warn('⚠️ Chrome storage not available')
+        return
+      }
       chrome.storage.local.set({[HISTORY_KEY]: updated}, ()=>{
         setList(updated)
         if(onStatsUpdate) onStatsUpdate()
